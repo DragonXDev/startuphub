@@ -266,8 +266,8 @@ export default function ProjectsPage() {
             <div className="flex-1 min-w-0">
               <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 3xl:grid-cols-4 gap-8">
                 {filteredProjects.map((project) => (
-                  <div className="min-w-[300px]">
-                    <ProjectCard key={project.id} {...project} />
+                  <div key={project.id} className="min-w-[300px]">
+                    <ProjectCard {...project} />
                   </div>
                 ))}
                 {filteredProjects.length === 0 && (
