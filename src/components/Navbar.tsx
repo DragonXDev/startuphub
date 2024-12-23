@@ -64,7 +64,7 @@ export default function Navbar  () {
               href="/"
               className={`flex items-center space-x-1 px-3 py-2 text-sm font-medium transition-colors ${
                 pathname === '/'
-                  ? 'text-white border-b-2 border-blue-500'
+                  ? 'text-white border-b-2 border-white'
                   : 'text-gray-300 hover:text-white'
               }`}
             >
@@ -75,7 +75,7 @@ export default function Navbar  () {
               href="/projects"
               className={`flex items-center space-x-1 px-3 py-2 text-sm font-medium transition-colors ${
                 pathname === '/projects'
-                  ? 'text-white border-b-2 border-blue-500'
+                  ? 'text-white border-b-2 border-white'
                   : 'text-gray-300 hover:text-white'
               }`}
             >
@@ -87,7 +87,7 @@ export default function Navbar  () {
                 href="/post"
                 className={`flex items-center space-x-1 px-3 py-2 text-sm font-medium transition-colors ${
                   pathname === '/post'
-                    ? 'text-white border-b-2 border-blue-500'
+                    ? 'text-white border-b-2 border-white'
                     : 'text-gray-300 hover:text-white'
                 }`}
               >
@@ -176,7 +176,7 @@ export default function Navbar  () {
               href="/"
               className={`flex items-center space-x-2 px-3 py-2 rounded-xl text-base font-medium transition-colors ${
                 pathname === '/'
-                  ? 'text-white border-b-2 border-blue-500'
+                  ? 'text-white border-b-2 border-white'
                   : 'text-gray-300 hover:text-white'
               }`}
               onClick={() => setIsMenuOpen(false)}
@@ -188,7 +188,7 @@ export default function Navbar  () {
               href="/projects"
               className={`flex items-center space-x-2 px-3 py-2 rounded-xl text-base font-medium transition-colors ${
                 pathname === '/projects'
-                  ? 'text-white border-b-2 border-blue-500'
+                  ? 'text-white border-b-2 border-white'
                   : 'text-gray-300 hover:text-white'
               }`}
               onClick={() => setIsMenuOpen(false)}
@@ -201,7 +201,7 @@ export default function Navbar  () {
                 href="/post"
                 className={`flex items-center space-x-2 px-3 py-2 rounded-xl text-base font-medium transition-colors ${
                   pathname === '/post'
-                    ? 'text-white border-b-2 border-blue-500'
+                    ? 'text-white border-b-2 border-white'
                     : 'text-gray-300 hover:text-white'
                 }`}
                 onClick={() => setIsMenuOpen(false)}
