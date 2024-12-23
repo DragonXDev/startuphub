@@ -3,6 +3,9 @@
 import { useState } from 'react';
 import StepIndicator from '@/components/StepIndicator';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { useRouter } from 'next/navigation';
+import { toast } from 'react-hot-toast';
 
 const categories = [
   'AI/Machine Learning',
@@ -19,31 +22,48 @@ const categories = [
   'IoT/Hardware',
 ] as const;
 
+const fundingStages = [
+  'bootstrapped',
+  'pre-seed',
+  'seed',
+  'series-a',
+  'series-b+',
+] as const;
+
+const teamSizes = [
+  'Solo Founder',
+  '2-5',
+  '6-10',
+  '11-20',
+  '20+',
+] as const;
+
 const steps = ['Basic Info', 'Project Details', 'Review & Post'];
 
 export default function PostIdea() {
   const [currentStep, setCurrentStep] = useState(0);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(false);
+  const router = useRouter();
+  
   const [formData, setFormData] = useState({
-    companyName: '',
-    teamSize: '',
+    title: '',
+    team_size: '',
     category: '',
     email: '',
     website: '',
-    contactName: '',
+    contact_name: '',
     phone: '',
     description: '',
-    tags: [] as string[],
-    fundingStage: '',
+    funding_stage: '',
     location: '',
-    promotionalDetails: '',
+    promotional_details: '',
     equity: '',
   });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-    // Clear error when user starts typing
     if (errors[name]) {
       setErrors(prev => {
         const newErrors = { ...prev };
@@ -57,11 +77,11 @@ export default function PostIdea() {
     const newErrors: Record<string, string> = {};
 
     if (currentStep === 0) {
-      if (!formData.companyName) newErrors.companyName = 'Company name is required';
-      if (!formData.teamSize) newErrors.teamSize = 'Team size is required';
+      if (!formData.title) newErrors.title = 'Project title is required';
+      if (!formData.team_size) newErrors.team_size = 'Team size is required';
       if (!formData.category) newErrors.category = 'Category is required';
       if (!formData.email) newErrors.email = 'Email is required';
-      if (!formData.contactName) newErrors.contactName = 'Contact name is required';
+      if (!formData.contact_name) newErrors.contact_name = 'Contact name is required';
       if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
         newErrors.email = 'Please enter a valid email';
       }
@@ -69,7 +89,7 @@ export default function PostIdea() {
 
     if (currentStep === 1) {
       if (!formData.description) newErrors.description = 'Description is required';
-      if (!formData.fundingStage) newErrors.fundingStage = 'Funding stage is required';
+      if (!formData.funding_stage) newErrors.funding_stage = 'Funding stage is required';
       if (!formData.location) newErrors.location = 'Location is required';
       if (!formData.equity) newErrors.equity = 'Equity is required';
     }
@@ -90,6 +110,54 @@ export default function PostIdea() {
     }
   };
 
+  const handleSubmit = async () => {
+    if (!validateStep()) return;
+
+    try {
+      setLoading(true);
+      const supabase = createClientComponentClient();
+      
+      // Get the authenticated user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError) throw userError;
+      if (!user) {
+        toast.error('Please sign in to post a project');
+        router.push('/auth/sign-in');
+        return;
+      }
+
+      // Create the project
+      const { data: project, error: projectError } = await supabase
+        .from('projects')
+        .insert({
+          title: formData.title,
+          description: formData.description,
+          team_size: formData.team_size,
+          category: formData.category,
+          email: formData.email,
+          website: formData.website || null,
+          contact_name: formData.contact_name,
+          phone: formData.phone || null,
+          funding_stage: formData.funding_stage,
+          location: formData.location,
+          promotional_details: formData.promotional_details || null,
+          equity: formData.equity,
+          user_id: user.id,
+        })
+        .select()
+        .single();
+
+      if (projectError) throw projectError;
+
+      toast.success('Project posted successfully!');
+      router.push('/projects');
+    } catch (error: any) {
+      toast.error('Failed to post project: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const renderStep = () => {
     switch (currentStep) {
       case 0:
@@ -97,40 +165,38 @@ export default function PostIdea() {
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium mb-2">Company Name *</label>
+                <label className="block text-sm font-medium mb-2">Project Title *</label>
                 <input
                   type="text"
-                  name="companyName"
-                  value={formData.companyName}
+                  name="title"
+                  value={formData.title}
                   onChange={handleInputChange}
                   className={`w-full p-3 rounded-lg bg-white dark:bg-gray-900 border ${
-                    errors.companyName ? 'border-red-500' : 'border-gray-200 dark:border-gray-800'
+                    errors.title ? 'border-red-500' : 'border-gray-200 dark:border-gray-800'
                   } focus:ring-2 focus:ring-gray-900 dark:focus:ring-gray-100 outline-none transition-all`}
-                  placeholder="Enter company name"
+                  placeholder="Enter project title"
                 />
-                {errors.companyName && (
-                  <p className="mt-1 text-sm text-red-500">{errors.companyName}</p>
+                {errors.title && (
+                  <p className="mt-1 text-sm text-red-500">{errors.title}</p>
                 )}
               </div>
               <div>
                 <label className="block text-sm font-medium mb-2">Team Size *</label>
                 <select
-                  name="teamSize"
-                  value={formData.teamSize}
+                  name="team_size"
+                  value={formData.team_size}
                   onChange={handleInputChange}
                   className={`w-full p-3 rounded-lg bg-white dark:bg-gray-900 border ${
-                    errors.teamSize ? 'border-red-500' : 'border-gray-200 dark:border-gray-800'
+                    errors.team_size ? 'border-red-500' : 'border-gray-200 dark:border-gray-800'
                   } focus:ring-2 focus:ring-gray-900 dark:focus:ring-gray-100 outline-none transition-all`}
                 >
-                  <option value="" className="text-gray-500">Select team size</option>
-                  <option value="1">Solo Founder</option>
-                  <option value="2-5">2-5 people</option>
-                  <option value="6-10">6-10 people</option>
-                  <option value="11-20">11-20 people</option>
-                  <option value="20+">20+ people</option>
+                  <option value="">Select team size</option>
+                  {teamSizes.map(size => (
+                    <option key={size} value={size}>{size}</option>
+                  ))}
                 </select>
-                {errors.teamSize && (
-                  <p className="mt-1 text-sm text-red-500">{errors.teamSize}</p>
+                {errors.team_size && (
+                  <p className="mt-1 text-sm text-red-500">{errors.team_size}</p>
                 )}
               </div>
               <div>
@@ -143,7 +209,7 @@ export default function PostIdea() {
                     errors.category ? 'border-red-500' : 'border-gray-200 dark:border-gray-800'
                   } focus:ring-2 focus:ring-gray-900 dark:focus:ring-gray-100 outline-none transition-all`}
                 >
-                  <option value="" className="text-gray-500">Select category</option>
+                  <option value="">Select category</option>
                   {categories.map(category => (
                     <option key={category} value={category}>{category}</option>
                   ))}
@@ -183,17 +249,28 @@ export default function PostIdea() {
                 <label className="block text-sm font-medium mb-2">Contact Name *</label>
                 <input
                   type="text"
-                  name="contactName"
-                  value={formData.contactName}
+                  name="contact_name"
+                  value={formData.contact_name}
                   onChange={handleInputChange}
                   className={`w-full p-3 rounded-lg bg-white dark:bg-gray-900 border ${
-                    errors.contactName ? 'border-red-500' : 'border-gray-200 dark:border-gray-800'
+                    errors.contact_name ? 'border-red-500' : 'border-gray-200 dark:border-gray-800'
                   } focus:ring-2 focus:ring-gray-900 dark:focus:ring-gray-100 outline-none transition-all`}
                   placeholder="Enter contact name"
                 />
-                {errors.contactName && (
-                  <p className="mt-1 text-sm text-red-500">{errors.contactName}</p>
+                {errors.contact_name && (
+                  <p className="mt-1 text-sm text-red-500">{errors.contact_name}</p>
                 )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Phone (optional)</label>
+                <input
+                  type="tel"
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleInputChange}
+                  className="w-full p-3 rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 focus:ring-2 focus:ring-gray-900 dark:focus:ring-gray-100 outline-none transition-all"
+                  placeholder="Enter phone number"
+                />
               </div>
             </div>
           </div>
@@ -221,22 +298,20 @@ export default function PostIdea() {
               <div>
                 <label className="block text-sm font-medium mb-2">Funding Stage *</label>
                 <select
-                  name="fundingStage"
-                  value={formData.fundingStage}
+                  name="funding_stage"
+                  value={formData.funding_stage}
                   onChange={handleInputChange}
                   className={`w-full p-3 rounded-lg bg-white dark:bg-gray-900 border ${
-                    errors.fundingStage ? 'border-red-500' : 'border-gray-200 dark:border-gray-800'
+                    errors.funding_stage ? 'border-red-500' : 'border-gray-200 dark:border-gray-800'
                   } focus:ring-2 focus:ring-gray-900 dark:focus:ring-gray-100 outline-none transition-all`}
                 >
-                  <option value="" className="text-gray-500">Select funding stage</option>
-                  <option value="bootstrapped">Bootstrapped</option>
-                  <option value="pre-seed">Pre-seed</option>
-                  <option value="seed">Seed</option>
-                  <option value="series-a">Series A</option>
-                  <option value="series-b+">Series B+</option>
+                  <option value="">Select funding stage</option>
+                  {fundingStages.map(stage => (
+                    <option key={stage} value={stage}>{stage}</option>
+                  ))}
                 </select>
-                {errors.fundingStage && (
-                  <p className="mt-1 text-sm text-red-500">{errors.fundingStage}</p>
+                {errors.funding_stage && (
+                  <p className="mt-1 text-sm text-red-500">{errors.funding_stage}</p>
                 )}
               </div>
               <div>
@@ -273,10 +348,10 @@ export default function PostIdea() {
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2">Promotional Details</label>
+              <label className="block text-sm font-medium mb-2">Promotional Details (optional)</label>
               <textarea
-                name="promotionalDetails"
-                value={formData.promotionalDetails}
+                name="promotional_details"
+                value={formData.promotional_details}
                 onChange={handleInputChange}
                 rows={3}
                 className="w-full p-3 rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 focus:ring-2 focus:ring-gray-900 dark:focus:ring-gray-100 outline-none transition-all"
@@ -292,12 +367,12 @@ export default function PostIdea() {
               <h3 className="text-lg font-semibold mb-4">Review Your Information</h3>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Company</p>
-                  <p className="mt-1">{formData.companyName}</p>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Project Title</p>
+                  <p className="mt-1">{formData.title}</p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Team Size</p>
-                  <p className="mt-1">{formData.teamSize}</p>
+                  <p className="mt-1">{formData.team_size}</p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Category</p>
@@ -305,7 +380,7 @@ export default function PostIdea() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Contact</p>
-                  <p className="mt-1">{formData.contactName}</p>
+                  <p className="mt-1">{formData.contact_name}</p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Email</p>
@@ -327,7 +402,7 @@ export default function PostIdea() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Funding Stage</p>
-                  <p className="mt-1">{formData.fundingStage}</p>
+                  <p className="mt-1">{formData.funding_stage}</p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Equity Offered</p>
@@ -337,10 +412,11 @@ export default function PostIdea() {
             </div>
             
             <button
-              onClick={() => console.log('Submit:', formData)}
-              className="w-full py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg hover:opacity-90 transition-all duration-300 font-medium"
+              onClick={handleSubmit}
+              disabled={loading}
+              className="w-full py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg hover:opacity-90 transition-all duration-300 font-medium disabled:opacity-50"
             >
-              Post Project
+              {loading ? 'Posting...' : 'Post Project'}
             </button>
           </div>
         );
