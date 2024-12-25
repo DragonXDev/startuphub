@@ -8,25 +8,28 @@ export async function getProjects() {
     .from('projects')
     .select(`
       *,
-      tags:project_tags(
-        tag:tags(*)
+      project_tags(
+        tags(*)
       ),
-      roles:project_roles(
-        role:roles(*)
-      )
+      project_roles(
+        roles(*)
+      ),
+      profiles:user_id(*)
     `)
-    .order('created_at', { ascending: false })
+    .order('created_at', { ascending: false });
 
   if (error) {
-    throw error
+    throw error;
   }
 
   return projects.map(project => ({
     ...project,
-    tags: project.tags?.map((t: any) => t.tag) || [],
-    roles: project.roles?.map((r: any) => r.role) || []
-  }))
+    tags: project.project_tags?.map((t: any) => t.tags) || [],
+    roles: project.project_roles?.map((r: any) => r.roles) || [],
+    user: project.profiles
+  }));
 }
+
 
 export async function getProjectById(id: string) {
   const { data: project, error } = await supabase
@@ -38,6 +41,11 @@ export async function getProjectById(id: string) {
       ),
       roles:project_roles(
         role:roles(*)
+      ),
+      user:users(
+        id,
+        email,
+        user_metadata
       )
     `)
     .eq('id', id)
@@ -50,7 +58,8 @@ export async function getProjectById(id: string) {
   return {
     ...project,
     tags: project.tags?.map((t: any) => t.tag) || [],
-    roles: project.roles?.map((r: any) => r.role) || []
+    roles: project.roles?.map((r: any) => r.role) || [],
+    user: project.user
   }
 }
 
@@ -86,7 +95,7 @@ export async function createProject(
       .upsert(
         tagNames.map(name => ({
           name,
-          color: `#${Math.floor(Math.random()*16777215).toString(16).padStart(6, '0')}`
+          color: `#${Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0')}`
         }))
       )
       .select()
@@ -175,7 +184,7 @@ export async function updateProject(
         .upsert(
           tagNames.map(name => ({
             name,
-            color: `#${Math.floor(Math.random()*16777215).toString(16).padStart(6, '0')}`
+            color: `#${Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0')}`
           }))
         )
         .select()
