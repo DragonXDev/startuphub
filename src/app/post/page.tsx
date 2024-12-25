@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, KeyboardEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import StepIndicator from '@/components/StepIndicator';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
@@ -39,6 +39,8 @@ export default function PostIdea() {
   const [currentStep, setCurrentStep] = useState(0);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+  const [tagInput, setTagInput] = useState('');
+  const [roleInput, setRoleInput] = useState('');
   const [formData, setFormData] = useState({
     title: '',
     company_name: '',
@@ -58,10 +60,13 @@ export default function PostIdea() {
     equity_offered: '',
   });
 
+  const MAX_TAGS = 6;
+  const MAX_ROLES = 8;
+  const MIN_DESCRIPTION_LENGTH = 100;
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-    // Clear error when user starts typing
     if (errors[name]) {
       setErrors(prev => {
         const newErrors = { ...prev };
@@ -71,14 +76,62 @@ export default function PostIdea() {
     }
   };
 
-  const handleTagsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const tags = e.target.value.split(',').map(tag => tag.trim()).filter(Boolean);
-    setFormData(prev => ({ ...prev, tags }));
+  const handleTagKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if ((e.key === ',' || e.key === ' ' || e.key === 'Enter') && tagInput.trim()) {
+      e.preventDefault();
+      const newTag = tagInput.trim().replace(/,/g, '');
+      if (formData.tags.length < MAX_TAGS && !formData.tags.includes(newTag)) {
+        setFormData(prev => ({
+          ...prev,
+          tags: [...prev.tags, newTag]
+        }));
+        setTagInput('');
+      }
+    } else if (e.key === 'Backspace' && !tagInput && formData.tags.length > 0) {
+      e.preventDefault();
+      const lastTag = formData.tags[formData.tags.length - 1];
+      setFormData(prev => ({
+        ...prev,
+        tags: prev.tags.slice(0, -1)
+      }));
+      setTagInput(lastTag);
+    }
   };
 
-  const handleRolesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const roles = e.target.value.split(',').map(role => role.trim()).filter(Boolean);
-    setFormData(prev => ({ ...prev, roles }));
+  const handleRoleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if ((e.key === ',' || e.key === 'Enter') && roleInput.trim()) {
+      e.preventDefault();
+      const newRole = roleInput.trim().replace(/,/g, '');
+      if (formData.roles.length < MAX_ROLES && !formData.roles.includes(newRole)) {
+        setFormData(prev => ({
+          ...prev,
+          roles: [...prev.roles, newRole]
+        }));
+        setRoleInput('');
+      }
+    } else if (e.key === 'Backspace' && !roleInput && formData.roles.length > 0) {
+      e.preventDefault();
+      const lastRole = formData.roles[formData.roles.length - 1];
+      setFormData(prev => ({
+        ...prev,
+        roles: prev.roles.slice(0, -1)
+      }));
+      setRoleInput(lastRole);
+    }
+  };
+
+  const removeTag = (indexToRemove: number) => {
+    setFormData(prev => ({
+      ...prev,
+      tags: prev.tags.filter((_, index) => index !== indexToRemove)
+    }));
+  };
+
+  const removeRole = (indexToRemove: number) => {
+    setFormData(prev => ({
+      ...prev,
+      roles: prev.roles.filter((_, index) => index !== indexToRemove)
+    }));
   };
 
   const validateStep = () => {
@@ -87,7 +140,26 @@ export default function PostIdea() {
     if (currentStep === 0) {
       if (!formData.title) newErrors.title = 'Title is required';
       if (!formData.category) newErrors.category = 'Category is required';
-      if (!formData.description) newErrors.description = 'Description is required';
+      if (!formData.description) {
+        newErrors.description = 'Description is required';
+      } else if (formData.description.length < MIN_DESCRIPTION_LENGTH) {
+        newErrors.description = `Description must be at least ${MIN_DESCRIPTION_LENGTH} characters`;
+      }
+      if (!formData.tags || formData.tags.length === 0) {
+        newErrors.tags = 'At least one tag is required';
+      } else if (formData.tags.length > MAX_TAGS) {
+        newErrors.tags = `Maximum ${MAX_TAGS} tags allowed`;
+      }
+    } else if (currentStep === 1) {
+      if (!formData.company_name) newErrors.company_name = 'Company name is required';
+      if (!formData.team_size) newErrors.team_size = 'Team size is required';
+      if (!formData.location) newErrors.location = 'Location is required';
+      if (!formData.funding_stage) newErrors.funding_stage = 'Funding stage is required';
+      if (!formData.roles || formData.roles.length === 0) {
+        newErrors.roles = 'At least one role is required';
+      } else if (formData.roles.length > MAX_ROLES) {
+        newErrors.roles = `Maximum ${MAX_ROLES} roles allowed`;
+      }
     } else if (currentStep === 2) {
       if (!formData.contact_name) newErrors.contact_name = 'Contact name is required';
       if (!formData.contact_email) newErrors.contact_email = 'Contact email is required';
@@ -169,7 +241,7 @@ export default function PostIdea() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-400 mb-1">Description*</label>
+                  <label className="block text-sm font-medium text-gray-400 mb-1">Description* (minimum {MIN_DESCRIPTION_LENGTH} characters)</label>
                   <textarea
                     name="description"
                     value={formData.description}
@@ -178,19 +250,46 @@ export default function PostIdea() {
                     className="w-full px-4 py-2 rounded-xl bg-white/5 border border-gray-200/10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Describe your project, its goals, and what makes it unique"
                   />
+                  <div className="mt-1 text-sm">
+                    <span className={formData.description.length < MIN_DESCRIPTION_LENGTH ? "text-red-500" : "text-green-500"}>
+                      {formData.description.length}/{MIN_DESCRIPTION_LENGTH} characters
+                    </span>
+                  </div>
                   {errors.description && <p className="mt-1 text-sm text-red-500">{errors.description}</p>}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-400 mb-1">Tags (comma-separated)</label>
-                  <input
-                    type="text"
-                    name="tags"
-                    value={formData.tags.join(', ')}
-                    onChange={handleTagsChange}
-                    className="w-full px-4 py-2 rounded-xl bg-white/5 border border-gray-200/10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="e.g., blockchain, mobile, AI"
-                  />
+                  <label className="block text-sm font-medium text-gray-400 mb-1">
+                    Tags* ({formData.tags.length}/{MAX_TAGS} - press space, comma, or enter to add)
+                  </label>
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {formData.tags.map((tag, index) => (
+                        <span
+                          key={index}
+                          className="px-3 py-1 rounded-full bg-blue-500/20 text-blue-400 text-sm flex items-center"
+                        >
+                          {tag}
+                          <button
+                            onClick={() => removeTag(index)}
+                            className="ml-2 text-blue-400 hover:text-blue-300"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                    <input
+                      type="text"
+                      value={tagInput}
+                      onChange={(e) => setTagInput(e.target.value)}
+                      onKeyDown={handleTagKeyDown}
+                      disabled={formData.tags.length >= MAX_TAGS}
+                      className="w-full px-4 py-2 rounded-xl bg-white/5 border border-gray-200/10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder={formData.tags.length >= MAX_TAGS ? "Max tags reached" : "Type and press space, comma, or enter to add tags"}
+                    />
+                  </div>
+                  {errors.tags && <p className="mt-1 text-sm text-red-500">{errors.tags}</p>}
                 </div>
               </div>
             )}
@@ -199,7 +298,7 @@ export default function PostIdea() {
               <div className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-400 mb-1">Company Name</label>
+                    <label className="block text-sm font-medium text-gray-400 mb-1">Company Name*</label>
                     <input
                       type="text"
                       name="company_name"
@@ -207,10 +306,11 @@ export default function PostIdea() {
                       onChange={handleInputChange}
                       className="w-full px-4 py-2 rounded-xl bg-white/5 border border-gray-200/10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
+                    {errors.company_name && <p className="mt-1 text-sm text-red-500">{errors.company_name}</p>}
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-400 mb-1">Team Size</label>
+                    <label className="block text-sm font-medium text-gray-400 mb-1">Team Size*</label>
                     <input
                       type="text"
                       name="team_size"
@@ -219,6 +319,36 @@ export default function PostIdea() {
                       className="w-full px-4 py-2 rounded-xl bg-white/5 border border-gray-200/10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="e.g., Solo Founder, 2-5, 6-10"
                     />
+                    {errors.team_size && <p className="mt-1 text-sm text-red-500">{errors.team_size}</p>}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-400 mb-1">Location*</label>
+                    <input
+                      type="text"
+                      name="location"
+                      value={formData.location}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-2 rounded-xl bg-white/5 border border-gray-200/10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="City, Country"
+                    />
+                    {errors.location && <p className="mt-1 text-sm text-red-500">{errors.location}</p>}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-400 mb-1">Funding Stage*</label>
+                    <select
+                      name="funding_stage"
+                      value={formData.funding_stage}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-2 rounded-xl bg-white/5 border border-gray-200/10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Select funding stage</option>
+                      {fundingStages.map(stage => (
+                        <option key={stage} value={stage}>{stage}</option>
+                      ))}
+                    </select>
+                    {errors.funding_stage && <p className="mt-1 text-sm text-red-500">{errors.funding_stage}</p>}
                   </div>
 
                   <div>
@@ -244,44 +374,40 @@ export default function PostIdea() {
                       placeholder="https://github.com/"
                     />
                   </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-400 mb-1">Location</label>
-                    <input
-                      type="text"
-                      name="location"
-                      value={formData.location}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-2 rounded-xl bg-white/5 border border-gray-200/10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="City, Country"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-400 mb-1">Funding Stage</label>
-                    <select
-                      name="funding_stage"
-                      value={formData.funding_stage}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-2 rounded-xl bg-white/5 border border-gray-200/10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="">Select funding stage</option>
-                      {fundingStages.map(stage => (
-                        <option key={stage} value={stage}>{stage}</option>
-                      ))}
-                    </select>
-                  </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-400 mb-1">Roles Needed (comma-separated)</label>
-                  <input
-                    type="text"
-                    value={formData.roles.join(', ')}
-                    onChange={handleRolesChange}
-                    className="w-full px-4 py-2 rounded-xl bg-white/5 border border-gray-200/10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="e.g., Frontend Developer, UI Designer, Product Manager"
-                  />
+                  <label className="block text-sm font-medium text-gray-400 mb-1">
+                    Roles Needed* ({formData.roles.length}/{MAX_ROLES} - press comma or enter to add)
+                  </label>
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {formData.roles.map((role, index) => (
+                        <span
+                          key={index}
+                          className="px-3 py-1 rounded-full bg-purple-500/20 text-purple-400 text-sm flex items-center"
+                        >
+                          {role}
+                          <button
+                            onClick={() => removeRole(index)}
+                            className="ml-2 text-purple-400 hover:text-purple-300"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                    <input
+                      type="text"
+                      value={roleInput}
+                      onChange={(e) => setRoleInput(e.target.value)}
+                      onKeyDown={handleRoleKeyDown}
+                      disabled={formData.roles.length >= MAX_ROLES}
+                      className="w-full px-4 py-2 rounded-xl bg-white/5 border border-gray-200/10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder={formData.roles.length >= MAX_ROLES ? "Max roles reached" : "Type and press comma or enter to add roles"}
+                    />
+                  </div>
+                  {errors.roles && <p className="mt-1 text-sm text-red-500">{errors.roles}</p>}
                 </div>
 
                 <div>
