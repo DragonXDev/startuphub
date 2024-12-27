@@ -54,6 +54,7 @@ export default function ProjectsPage() {
     const loadProjects = async () => {
       try {
         const data = await getProjects();
+        console.log("HERE: ", data);
         setProjects(data);
       } catch (err) {
         setError('Failed to load projects. Please try again later.');
@@ -71,7 +72,7 @@ export default function ProjectsPage() {
       const matchesCategory = !selectedCategory || project.category === selectedCategory;
       const matchesFundingStage = !selectedFundingStage || project.funding_stage === selectedFundingStage;
       const matchesTeamSize = !selectedTeamSize || project.team_size === selectedTeamSize;
-      const matchesSearch = !searchQuery || 
+      const matchesSearch = !searchQuery ||
         project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         project.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
         project.company_name?.toLowerCase().includes(searchQuery.toLowerCase());
@@ -107,7 +108,7 @@ export default function ProjectsPage() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
-          
+
           <select
             className="px-4 py-2 rounded-xl bg-white/5 border border-gray-200/10 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
             value={selectedCategory}
