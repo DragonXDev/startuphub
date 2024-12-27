@@ -21,7 +21,9 @@ export async function getProjects() {
   if (error) {
     throw error;
   }
-
+  console.log(projects.map((p: any) => p.project_tags?.map((t: any) => t.tags) || []))
+  console.log(projects.map((p: any) => p.project_roles?.map((r: any) => r.roles) || []))
+  console.log("RIGHTHERE:", projects.map((p: any) => p.profiles || []))
   return projects.map(project => ({
     ...project,
     tags: project.project_tags?.map((t: any) => t.tags) || [],
