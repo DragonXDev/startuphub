@@ -9,7 +9,7 @@ export async function middleware(req: NextRequest) {
 
   // Protected routes that require authentication
   const protectedRoutes = ['/settings', '/projects']
-  
+
   if (!session && protectedRoutes.some(route => req.nextUrl.pathname.startsWith(route))) {
     return NextResponse.redirect(new URL('/auth/signin', req.url))
   }
